@@ -1,4 +1,5 @@
 import shogunPostHSLExecutor
+import fileManager
 import csv
 import os
 
@@ -7,6 +8,7 @@ class ShogunPostSceneData():
         self.actors = []
         self.markers = {}
         self.hsl_exec = shogunPostHSLExecutor.ShogunPostHSLExec()
+        self.fm = fileManager.FileManager("config.yaml")
         pass
 
     def addActor(self, actor):
@@ -110,7 +112,16 @@ class ShogunPostSceneData():
         self.hsl_exec.ExecuteHSL(unselect_hsl)
         pass
 
-    def exportActorMarkersToCSV(self, actor, output_dir="output"):
+    def getFileName(self):
+        get_file_name_hsl = """
+            string $result = "";
+            string $fileNameExtension = `GetPathToExportTo` + ".mcp";
+            $result = `getFileTitle $fileNameExtension`;
+        """
+        result = self.hsl_exec.ExecuteHSL(get_file_name_hsl)
+        return result.strip()
+
+    def exportActorMarkersToCSV(self, actor, actorID, output_dir=None):
         if actor not in self.markers:
             print(f"No marker data available for actor: {actor}")
             return
@@ -120,8 +131,10 @@ class ShogunPostSceneData():
             print(f"No markers found for actor: {actor}")
             return
 
-        os.makedirs(output_dir, exist_ok=True)
-        file_path = os.path.join(output_dir, f"{actor}_markers.csv")
+        if output_dir:
+            self.fm.set_csv_out(output_dir)
+
+        file_path = self.fm.get_file_path_from_output_dir(self.getFileName() + f"_actor{actorID}_markers.csv")
 
         with open(file_path, mode='w', newline='') as file:
             writer = csv.writer(file)
@@ -168,11 +181,11 @@ class ShogunPostSceneData():
         print(f"Exported markers for {actor} to {file_path}")
         self.unSelect()
 
-    def processAndExportAll(self, output_dir="./output"):
+    def processAndExportAll(self):
         self.getActors()
-        for actor in self.actors:
+        for i, actor in enumerate(self.actors):
             self.getAllMarkerForActor(actor)
-            self.exportActorMarkersToCSV(actor, output_dir)
+            self.exportActorMarkersToCSV(actor, i)
 
 
 # example usage
