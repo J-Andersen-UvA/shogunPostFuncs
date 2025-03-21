@@ -1,7 +1,6 @@
 import shogunPostHSLExecutor
 import fileManager
 import csv
-import os
 
 class ShogunPostSceneData():
     def __init__(self):
@@ -32,18 +31,18 @@ class ShogunPostSceneData():
                 }
                 $result += $Actors[$i];
             }
-
-            print $result;
         """
         result = self.hsl_exec.ExecuteHSL(get_actors_hsl)
 
         # Convert comma-separated string to a Python list
         self.actors = result.strip().split(",") if result else []
+        self.unSelect()
 
-        print(f"Actors: {self.actors}")
         return self.actors
     
     def getAllMarkerForActor(self, actor):
+        self.unSelect()
+        self.selectCurrentSubject(actor)
         get_markers_hsl = f"""
             select "{actor}";
             string $result = "";
@@ -63,15 +62,15 @@ class ShogunPostSceneData():
                     }}
                 }}
             }}
-
-            print $result;
         """
         result = self.hsl_exec.ExecuteHSL(get_markers_hsl)
         markers = result.strip().split(",") if result else []
         markers = self.filterMarkers(markers)
 
         self.markers[actor] = markers
-        print(f"Markers for {actor}: {markers}")
+
+        self.unSelectCurrentSubject()
+        self.unSelect()
 
         return markers
 
@@ -84,7 +83,7 @@ class ShogunPostSceneData():
         markers = [marker for marker in markers if "LabelingCluster" not in marker]
 
         return markers
-
+        
     def selectByName(self, name):
         select_by_name_hsl = f"""
             string $result = "";
@@ -102,6 +101,22 @@ class ShogunPostSceneData():
                 select "{name}" -a;\n
             """
         self.hsl_exec.ExecuteHSL(select_by_name_hsl)
+        pass
+
+    def selectCurrentSubject(self, actor):
+        select_current_subject_hsl = f"""
+            string $result = "";
+            setCurrentSubject "{actor}";
+        """
+        self.hsl_exec.ExecuteHSL(select_current_subject_hsl)
+        pass
+
+    def unSelectCurrentSubject(self):
+        unselect_current_subject_hsl = """
+            string $result = "";
+            setCurrentSubject All;
+        """
+        self.hsl_exec.ExecuteHSL(unselect_current_subject_hsl)
         pass
 
     def unSelect(self):
@@ -123,11 +138,13 @@ class ShogunPostSceneData():
 
     def exportActorMarkersToCSV(self, actor, actorID, output_dir=None):
         if actor not in self.markers:
+            self.fm.write_error(f"No marker data available for actor: {actor} in file: {self.getFileName()}")
             print(f"No marker data available for actor: {actor}")
             return
         
         markers = self.markers[actor]
         if not markers:
+            self.fm.write_error(f"No markers found for actor: {actor} in file: {self.getFileName()}")
             print(f"No markers found for actor: {actor}")
             return
 
@@ -143,6 +160,7 @@ class ShogunPostSceneData():
                      [f"{marker}<T-Z>" for marker in markers]
             writer.writerow(header)
 
+            self.selectCurrentSubject(actor)
             self.selectByNames(markers)
 
             get_translation_hsl = f"""
@@ -178,7 +196,7 @@ class ShogunPostSceneData():
             for line in result.strip().split("\n"):
                 writer.writerow(line.split(","))
 
-        print(f"Exported markers for {actor} to {file_path}")
+        self.unSelectCurrentSubject()
         self.unSelect()
 
     def processAndExportAll(self):
