@@ -9,7 +9,7 @@ I created this project because I dislike dealing with functions, keeping track o
 This project consists of two main Python scripts:
 
 1. `getDataScene.py`: This script handles the extraction of actor and marker data from Shogun Post and exports it to CSV files.
-2. `shogunPostHSLExecutor.py`: This script provides a wrapper to execute HSL (Human Script Language) commands in Shogun Post using a temporary file to capture the output.
+2. `shogunPostHSLExecutor.py`: This script provides a wrapper to execute HSL commands in Shogun Post using a temporary file to capture the output.
 
 ## Files
 
@@ -41,6 +41,10 @@ python getDataScene.py
 ```
 
 This will connect to Shogun Post, retrieve actor and marker data, and export the data to CSV files in the `output` directory.
+
+## Important
+
+Currently the hsl execution is forcing you to add ```string $result = "";``` so the result can get written to a variable.
 
 ## Example
 

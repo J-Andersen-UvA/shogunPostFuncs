@@ -73,6 +73,19 @@ class ShogunPostSceneData():
         self.unSelect()
 
         return markers
+    
+    def selectAllFingerMarkers(self, actor):
+        self.unSelect()
+        self.selectCurrentSubject(actor)
+        markers = '"LIWR" "LOWR" "RIWR" "ROWR" "LIHAND" "LOHAND" "RIHAND" "ROHAND" "LTHM3" "LTHM6" "LIDX3" "LIDX6" "LMID0" "LMID6" "LRNG3" "LRNG6" "LPNK3" "LPNK6" "RTHM3" "RTHM6" "RIDX3" "RIDX6" "RMID0" "RMID6" "RRNG3" "RRNG6" "RPNK3" "RPNK6"'
+        get_markers_hsl = f"""
+            selectByName {markers};
+            string $result = "";
+        """
+        self.markers[actor] = markers.split('"')[1::2]
+        self.markers[actor] = [marker for marker in self.markers[actor] if marker != ""]
+        self.hsl_exec.ExecuteHSL(get_markers_hsl)
+        pass
 
     def filterMarkers(self, markers):
         # remove the last empty string if it exists
@@ -135,6 +148,14 @@ class ShogunPostSceneData():
         """
         result = self.hsl_exec.ExecuteHSL(get_file_name_hsl)
         return result.strip()
+
+    def printInHSL(self, message):
+        print_in_hsl = f"""
+            string $result = "";
+            print "{message}";
+        """
+        self.hsl_exec.ExecuteHSL(print_in_hsl)
+        pass
 
     def exportActorMarkersToCSV(self, actor, actorID, output_dir=None):
         if actor not in self.markers:
@@ -204,13 +225,38 @@ class ShogunPostSceneData():
         for i, actor in enumerate(self.actors):
             self.getAllMarkerForActor(actor)
             self.exportActorMarkersToCSV(actor, i)
+    
+    def processAndExportAllFingerMarkers(self):
+        self.getActors()
+        for i, actor in enumerate(self.actors):
+            self.selectAllFingerMarkers(actor)
+            self.exportActorMarkersToCSV(actor, i)
 
+    def exportActorFBX(self, actor_name, path):
+        export_fbx_hsl = f"""
+            string $result = "";
+            setCurrentSubject {actor_name};
+            labelOptions -curChar "{actor_name}";
+            select "{actor_name}" -a;
+            SelectChildren_Add_All;
+            saveFile -s "{path}";
+            select ;
+            setCurrentSubject All;
+        """
+        self.printInHSL(f"Exporting actor '{actor_name}' to FBX at path: {path}")
+        if actor_name not in self.actors:
+            self.fm.write_error(f"Actor '{actor_name}' not found in the scene data.")
+            self.printInHSL(f"Actor '{actor_name}' not found in the scene data.")
+            return
+
+        result = self.hsl_exec.ExecuteHSL(export_fbx_hsl)
 
 # example usage
-if __name__ == '__main__':
-    print("Running ShogunPostSceneData example...")
-    scene_data = ShogunPostSceneData()
-    scene_data.processAndExportAll()
+# if __name__ == '__main__':
+    # print("Running ShogunPostSceneData example...")
+    # scene_data = ShogunPostSceneData()
+    # scene_data.processAndExportAll()
+    # scene_data.processAndExportAllFingerMarkers()
 
     # actors = scene_data.getActors()
 
