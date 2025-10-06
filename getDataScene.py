@@ -1,13 +1,19 @@
 import shogunPostHSLExecutor
 import fileManager
 import csv
+import os
 
 class ShogunPostSceneData():
     def __init__(self):
         self.actors = []
         self.markers = {}
         self.hsl_exec = shogunPostHSLExecutor.ShogunPostHSLExec()
-        self.fm = fileManager.FileManager("config.yaml")
+        if not os.path.exists("config.yaml"):
+            print(f"Error: The YAML file 'config.yaml' does not exist.\tSkipping.")
+            self.fm = None
+        else:
+            self.fm = fileManager.FileManager("config.yaml")
+    
         pass
 
     def addActor(self, actor):
@@ -149,6 +155,22 @@ class ShogunPostSceneData():
         result = self.hsl_exec.ExecuteHSL(get_file_name_hsl)
         return result.strip()
 
+    def getCurrentFilePath(self):
+        get_file_path_hsl = """
+            string $result = "";
+            $result = `GetPathToExportTo` + ".mcp";
+        """
+        result = self.hsl_exec.ExecuteHSL(get_file_path_hsl)
+        return result
+    
+    def getCurrentDirectory(self):
+        get_current_directory_hsl = """
+            string $filePath = `GetPathToExportTo`;
+            string $result = `getFileLocation $filePath`;
+        """
+        result = self.hsl_exec.ExecuteHSL(get_current_directory_hsl)
+        return result
+
     def printInHSL(self, message):
         print_in_hsl = f"""
             string $result = "";
@@ -157,22 +179,31 @@ class ShogunPostSceneData():
         self.hsl_exec.ExecuteHSL(print_in_hsl)
         pass
 
-    def exportActorMarkersToCSV(self, actor, actorID, output_dir=None):
+    def _exportActorMarkersToCSV(self, actor, output_dir=None):
         if actor not in self.markers:
-            self.fm.write_error(f"No marker data available for actor: {actor} in file: {self.getFileName()}")
+            if self.fm is not None:
+                self.fm.write_error(f"No marker data available for actor: {actor} in file: {self.getFileName()}")
             print(f"No marker data available for actor: {actor}")
             return
         
         markers = self.markers[actor]
         if not markers:
-            self.fm.write_error(f"No markers found for actor: {actor} in file: {self.getFileName()}")
+            if self.fm is not None:
+                self.fm.write_error(f"No markers found for actor: {actor} in file: {self.getFileName()}")
             print(f"No markers found for actor: {actor}")
             return
 
         if output_dir:
-            self.fm.set_csv_out(output_dir)
+            if self.fm is not None:
+                self.fm.set_csv_out(output_dir)
 
-        file_path = self.fm.get_file_path_from_output_dir(self.getFileName() + f"_actor{actorID}_markers.csv")
+        file_name = self.getFileName() + f"_actor_{actor}_markers.csv"
+        if self.fm is not None:
+            file_path = self.fm.get_file_path_from_output_dir(file_name)
+        elif output_dir:
+            file_path = f"{output_dir}/{file_name}"
+        else:
+            file_path = f"D:/PostExports/CSV/BufferFolder/{file_name}"
 
         with open(file_path, mode='w', newline='') as file:
             writer = csv.writer(file)
@@ -219,18 +250,23 @@ class ShogunPostSceneData():
 
         self.unSelectCurrentSubject()
         self.unSelect()
+        # return the filepath for logging purposes
+        return file_path
 
-    def processAndExportAll(self):
+    def processAndExportAllMarkers(self, output_dir=None):
         self.getActors()
+        file_paths = []
         for i, actor in enumerate(self.actors):
             self.getAllMarkerForActor(actor)
-            self.exportActorMarkersToCSV(actor, i)
-    
-    def processAndExportAllFingerMarkers(self):
+            file_paths.append(self._exportActorMarkersToCSV(actor, output_dir=output_dir))
+
+        return file_paths
+
+    def processAndExportAllFingerMarkers(self, output_dir=None):
         self.getActors()
         for i, actor in enumerate(self.actors):
             self.selectAllFingerMarkers(actor)
-            self.exportActorMarkersToCSV(actor, i)
+            self._exportActorMarkersToCSV(actor, output_dir=output_dir)
 
     def exportActorFBX(self, actor_name, path):
         export_fbx_hsl = f"""
@@ -245,7 +281,8 @@ class ShogunPostSceneData():
         """
         self.printInHSL(f"Exporting actor '{actor_name}' to FBX at path: {path}")
         if actor_name not in self.actors:
-            self.fm.write_error(f"Actor '{actor_name}' not found in the scene data.")
+            if self.fm is not None:
+                self.fm.write_error(f"Actor '{actor_name}' not found in the scene data.")
             self.printInHSL(f"Actor '{actor_name}' not found in the scene data.")
             return
 
@@ -255,7 +292,7 @@ class ShogunPostSceneData():
 # if __name__ == '__main__':
     # print("Running ShogunPostSceneData example...")
     # scene_data = ShogunPostSceneData()
-    # scene_data.processAndExportAll()
+    # scene_data.processAndExportAllMarkers()
     # scene_data.processAndExportAllFingerMarkers()
 
     # actors = scene_data.getActors()

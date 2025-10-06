@@ -1,0 +1,31 @@
+import os, sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import getDataScene
+import logger
+
+def exportActorsSeparatly(file_path=None):
+    scene_data = getDataScene.ShogunPostSceneData()
+    actors = scene_data.getActors()
+    file_name_path = scene_data.getFileName()
+    file_name = file_name_path.split("/")[-1].split(".")[0]
+    if file_path is None:
+        file_path = scene_data.getCurrentDirectory()
+        # Usually folder is ../shogun_post from the filepath
+        if "shogun_live" in file_path:
+            file_path = file_path.replace("shogun_live", "shogun_post")
+            scene_data.printInHSL(f"Exporting to folder: {file_path}")
+        else:
+            file_path = "D:/PostExports/CSV/BufferFolder/"
+
+    log_folder = file_path.replace("shogun_live", "metadata")
+    log_file = logger.fetch_first_log_file_from_folder(log_folder, file_name)
+    log = logger.Logger(log_file if log_file != "" else None)
+
+    for actor in actors:
+        scene_data.printInHSL(f"Processing actor fbx: {actor}")
+        scene_data.exportActorFBX(actor, f"{file_path}/{file_name}_{actor}.fbx")
+        scene_data.printInHSL(f"Done processing actor fbx: {actor}")
+        log.append_log(f"assets.original_animation_fbx", f"{file_path}/{file_name}_{actor}.fbx")
+
+if __name__ == "__main__":
+    exportActorsSeparatly()

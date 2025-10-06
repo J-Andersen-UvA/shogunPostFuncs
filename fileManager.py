@@ -6,7 +6,7 @@ class FileManager:
     def __init__(self, yaml_file_path):
         # Check if file exists
         if not os.path.exists(yaml_file_path):
-            print(f"Error: The YAML file '{yaml_file_path}' does not exist.\tUsing default variables.")
+            print(f"Error: The YAML file '{yaml_file_path}' does not exist.\tAdding default path.")
             yaml_file_path = b"C:\Users\VICON\Desktop\Code\shogunPostHomeMadeCode\exportMultipleActorMarkers\config.yaml"
 
         with open(yaml_file_path, 'r') as file:
