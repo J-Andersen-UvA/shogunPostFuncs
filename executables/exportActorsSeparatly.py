@@ -17,8 +17,10 @@ def exportActorsSeparatly(file_path=None):
         else:
             file_path = "D:/PostExports/CSV/BufferFolder/"
 
-    log_folder = file_path.replace("shogun_live", "metadata")
+    log_folder = file_path.replace("shogun_post", "metadata")
+    scene_data.printInHSL(f"Looking for log files in folder: {log_folder}")
     log_file = logger.fetch_first_log_file_from_folder(log_folder, file_name)
+    scene_data.printInHSL(f"Using log file: {log_file if log_file != '' else 'None found...'}")
     log = logger.Logger(log_file if log_file != "" else None)
 
     for actor in actors:
